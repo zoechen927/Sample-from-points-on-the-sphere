@@ -1,0 +1,402 @@
+---
+title: "475_final"
+author: "Ruidong Chen"
+date: '2022-12-10'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Name: Ruidong Chen  SID:488314**
+
+**Name: Zhuoyun Chen  SID:499214**
+
+**Name: Ziwei Liu     SID:489909**
+
+**Name: Xinyang Feng  SID:490138**
+
+For Monte Carlo methods, it is critical to uniformly sample from d-dimensional spheres and balls.
+
+I will show some most frequent and useful methods to uniformly sample from the surface of a d-sphere and the interior of the d-ball.
+
+**Definition of the d-spere and d-ball.**
+
+A unit d-dimensional sphere is defined as follows:
+$$
+S^{d}=\{x\in R^{d+1}:|x|=1 \}
+$$
+And a unit d-dimensional ball is defined as follows:
+$$
+B^d=\{x\in R^d:|x|\leq1 \}
+$$
+Based on this definition, the perimeter of a circle is 1-sphere and the interior of the circle is 2-ball. The surface of a ball is 2-sphere and the interior of the ball is 3-ball. Also, the d signifies the degrees of freedom.
+
+**Uniform Random Sampling**
+For uniform random sampling, this means that all possible elements of S have an equal probability to be selected based on discrete probability. Besides, it also means the likelihood of an element falling in any sub-interval is discretely proportional to the length of the sub-interval based on continuous probabilities.
+
+Also, a simple and common method to draw from a normal distribution is the Box-Muller algorithm.
+
+To briefly understand why this works, consider the function
+$$
+f(u,v)=f(z)=(\frac{1}{\sqrt{2\pi}}e^{-0.5u^2})(\frac{1}{\sqrt{2\pi}}e^{-0.5v^2})
+$$
+After algebra simplifications
+$$
+f(u,v)=f(z)=\frac{1}{2\pi}e^{-0.5(u^2+v^2)}= \frac{1}{2\pi}e^{-0.5|z|^2}
+$$
+This shows that the probability distribution of z only depends on its magnitude and not any other direction. Thus it must be symmetric and must correspond to a uniform distribution on the circle.
+
+This argument can be generalized to any d.
+
+**1:Rejection Method**
+
+This is probably the most intuitive method and is fast for 2-ball.
+
+However, it will get a bad rap because when we apply this method to high dimensions, it can become very inefficient.
+
+pseudo code:
+
+1: Select x,y ~ U(-1,1)
+
+2: If (x^2+y^2>1) then reject and go to step 1.
+
+3: Return (x,y)
+
+**2:Polar + Radial CDF**
+
+For balls of any dimension d, a very common method of uniformly picking form a d-ball is to first select a random directional unit-vector from (d-1)-sphere and then multiply this vector by a scaler radial multiplicative factor.
+
+The crucial aspect of this algorithm is the multiplicative factor square root function. This is because area which corresponds to the CDF grows according to r square. Therefore, we need to apply the inverse of this.
+
+```{r}
+set.seed(1)
+u=runif(10000)
+v=runif(10000)
+r=u^0.5
+theta=2*pi*v
+x=r*cos(theta)
+y=r*sin(theta)
+colors <- c('#56B4E9')
+plot(x,y,col=colors,pch = '.')
+
+```
+
+**3:Concentric Map**
+
+This variance reduction method is motivated by the idea that ideal mappings from square-based random variate uv-space to the coordinate xy-space should be area-preserving, two-way continuous and with low distortion.
+
+```{r}
+set.seed(1)
+u=runif(10000)
+v=runif(10000)
+if (u==0 && v==0) return(0,0)
+theta=0
+r=1
+a=2*u-1
+b=2*v-1
+r=numeric(10000)
+theta=numeric(10000)
+
+for (i in 1:10000){
+  if (a[i]*a[i]>b[i]*b[i]){
+    r[i]=a[i]
+    theta[i]=pi/4*b[i]/a[i]
+  }else{
+    r[i]=b[i]
+    theta[i]=pi/2-pi/4*a[i]/b[i]
+  }
+}
+
+x=r*cos(theta)
+y=r*sin(theta)
+
+colors <- c('#56B4E9')
+plot(x,y,col=colors,pch = '.')
+
+```
+**4:Exponential Distribution**
+
+Another method that is valid for balls of any dimension is to draw d random variates from the normal distribution and a single random variable from exponential distribution usually with lambda=0.5.
+
+Also, a simple and common method to draw from an exponential distribution with parameter lambda is via the the negative logarithm of uniform random variate divided by lambda.
+
+```{r}
+u=rnorm(10000)
+v=rnorm(10000)
+e=rexp(10000,0.5)
+denom=(u*u+v*v+e)^0.5
+x=u/denom
+y=v/denom
+colors <- c('#56B4E9')
+plot(x,y,col=colors,pch = '.')
+```
+
+**5:Dropped Coordinates**
+
+A new method first introduced by Harman and Lacko in 2010 and then proven by Voelker in 2017 that is not famous is that if (x1,x2,x3,x4) is a random vector uniformly distributed on the 3-sphere, the random vector (x1,x2) is uniformly distributed in the 2-ball.
+
+```{r}
+a=rnorm(10000)
+b=rnorm(10000)
+c=rnorm(10000)
+d=rnorm(10000)
+norm=(a*a+b*b+c*c+d*d)^0.5
+x=c/norm
+y=d/norm
+colors <- c('#56B4E9')
+plot(x,y,col=colors,pch = '.')
+```
+
+**Uniformly sampling a 2-sphere which is the surface of a sphere**
+
+We can uniformly sample points on the surface of a sphere.
+
+**polar**
+
+This is the natural generalization.
+```{r}
+library(scatterplot3d)
+u=runif(10000)
+v=runif(10000)
+theta=2*pi*u
+phi=acos(2*v-1)
+x=sin(theta)*cos(phi)
+y=sin(theta)*sin(phi)
+z=cos(theta)
+colors <- c('#56B4E9')
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+We can also use u=cosine theta which does not use inverse trig functions as follows:
+```{r}
+library(scatterplot3d)
+u=2*runif(10000)-1
+phi=2*pi*runif(10000)
+z=u
+x=cos(phi)*(1-z^2)^0.5
+y=sin(phi)*(1-z^2)^0.5
+colors <- c('#56B4E9')
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+
+**Muller method**
+```{r}
+library(scatterplot3d)
+a=rnorm(10000)
+b=rnorm(10000)
+c=rnorm(10000)
+norm=(a*a+b*b+c*c)^0.5
+x=a/norm
+y=b/norm
+z=c/norm
+colors <- c('#56B4E9')
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+
+**Uniformly sampling a 3-ball which is interior of a sphere**
+
+We will now uniformly sample points inside a sphere.
+
+**Muller method for 3-ball**
+
+```{r}
+library(scatterplot3d)
+a=rnorm(10000)
+b=rnorm(10000)
+c=rnorm(10000)
+r=runif(10000)^(1/3)
+norm=(a*a+b*b+c*c)^0.5
+x=r*a/norm
+y=r*b/norm
+z=r*c/norm
+colors <- c("#E69F00")
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+
+**polar method for 3-ball**
+
+```{r}
+library(scatterplot3d)
+u=2*runif(10000)-1
+phi=2*pi*runif(10000)
+r=runif(10000)^(1/3)
+x=r*cos(phi)*(1-u^2)^0.5
+y=r*sin(phi)*(1-u^2)^0.5
+z=r*u
+colors <- c("#E69F00")
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+**Exponential Distribution for 3-ball**
+
+This is a similar method as 2-sphere.
+```{r}
+library(scatterplot3d)
+a=rnorm(10000)
+b=rnorm(10000)
+c=rnorm(10000)
+e=rexp(10000,rate=0.5)
+denom=(e+a*a+b*b+c*c)^0.5
+x=a/denom
+y=b/denom
+z=c/denom
+colors <- c("#E69F00")
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+
+**Dropped coordinates for 3-ball**
+
+Also, we have random vectors (a,b,c,d,e) uniformly distributed on the 4-sphere, the random vector (c,d,e) is uniformly distributed in the 3-ball and we dropped the first two coordinates.
+```{r}
+library(scatterplot3d)
+a=rnorm(10000)
+b=rnorm(10000)
+c=rnorm(10000)
+d=rnorm(10000)
+e=rnorm(10000)
+norm=(a*a+b*b+c*c+d*d+e*e)^0.5
+x=c/norm
+y=d/norm
+z=e/norm
+colors <- c("#E69F00")
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+
+**Other method**
+```{r}
+#install.packages("scatterplot3d")
+```
+
+```{r}
+#r2 space
+#multivariate approach
+library(scatterplot3d)
+n=2000
+k=2
+x=matrix(rnorm(n*k),ncol=k)
+y=x/sqrt(rowSums(x*x))
+colors <- c('#56B4E9')
+plot(y[,1],y[,2],col=colors,pch = '.')
+```
+```{r}
+# r3 space
+#multivariate approach
+n=10000
+k=3
+x=matrix(rnorm(n*k),ncol = k)
+y=x/sqrt(rowSums(x*x))
+colors <- c('#56B4E9')
+scatterplot3d(y[,1],y[,2],y[,3],color=colors,pch = '.')
+```
+
+```{r}
+#r2 space
+#random numbers in a square
+n=2000
+k=2
+x=matrix(runif(k*ceiling(n*4/pi),-1,1),ncol = k)
+x=x[x[,1]^2+x[,2]^2<=1,]
+y=x/sqrt(rowSums(x*x))
+colors <- c('#56B4E9')
+plot(y[,1],y[,2],col=colors,pch = '.')
+dim(y)
+```
+```{r}
+#r3 space
+#random numbers in a cube
+n=10000
+k=3
+x=matrix(runif(k*ceiling(n*6/pi),-1,1),ncol = k)
+x=x[x[,1]^2+x[,2]^2+x[,3]^2<=1,]
+y=x/sqrt(rowSums(x*x))
+colors <- c('#56B4E9')
+scatterplot3d(y[,1],y[,2],y[,3],color=colors,pch = '.')
+dim(y)
+```
+
+**Generalization**: How to generalize to n-dimensional sphere or ball sampling? Using Muller Method.We can do it by random numbers in a cube method, but its efficiency drops quickly after d=3.
+
+Start from sphere sampling.
+
+**Muller Method**
+```{r}
+d_dimension_sphere = function(D) {
+    samples = sapply(1:D, function(d) {
+        rnorm(n=10000)
+    })
+    radii = apply(samples, 1, function(s) {
+        sqrt(sum(s ^ 2))
+    })
+    samples = samples/radii
+samples
+}
+```
+
+```{r}
+points.sphere = d_dimension_sphere(D=3)
+x = points.sphere[, 1]
+y = points.sphere[, 2]
+z = points.sphere[, 3]
+colors <- c('#56B4E9')
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+Ball sampling:
+
+**Muller Method**
+Similar to the 3-ball Muller, it just extend to higher dimension.
+```{r}
+d_dimension_ball = function(D) {
+    samples = sapply(1:D, function(d) {
+        rnorm(n=10000)
+    })
+    radii = apply(samples, 1, function(s) {
+        sqrt(sum(s ^ 2))
+    })
+    new.radii = runif(10000) / radii
+    samples = samples * new.radii
+samples
+}
+```
+
+```{r}
+points.sphere = d_dimension_ball(D=3)
+x = points.sphere[, 1]
+y = points.sphere[, 2]
+z = points.sphere[, 3]
+colors <- c('#E69F00')
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+
+**Extension**: How to sample from unit hemisphere surface? (Given one of the coordinates is positive)
+
+**Cosine-weighted hemisphere**
+This is the natural generalization. Main difference from the sphere is the interval of theta to make sure theta range from (-pi/2,pi/2). In such a case, cos(theta)>0.
+```{r}
+#r-3 space
+u=runif(10000)
+v=runif(10000)
+theta=acos(sqrt(u))
+phi=2*pi*v
+
+x=sin(theta)*cos(phi)
+y=sin(theta)*sin(phi)
+z=cos(theta)
+colors <- c('#56B4E9')
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+We can also use u=cosine theta which does not use inverse trig functions as follows:
+```{r}
+u=runif(10000)
+v=runif(10000)
+a = (1 - 2*u)^2
+b = sqrt(1 - a*a)
+phi = 2*pi*v
+x = b*cos(phi)
+y = b*sin(phi)
+z = a
+colors <- c('#56B4E9')
+scatterplot3d(x,y,z,color=colors,pch = '.')
+```
+
+
+
